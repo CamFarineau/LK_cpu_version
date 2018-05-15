@@ -13,7 +13,7 @@ class TicToc{
 	double tt_tic;
  
 	void tic();
-	void toc();
+	double toc();
 };
 
 #endif

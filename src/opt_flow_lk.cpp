@@ -47,40 +47,10 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
     int nb_feature_erased = 0;
 
-    this->frame1_pyr_.img_levels.erase(this->frame1_pyr_.img_levels.begin(),this->frame1_pyr_.img_levels.end());
-    this->frame1_pyr_.img_levels.clear();
-
-    this->frame2_pyr_.img_levels.erase(this->frame2_pyr_.img_levels.begin(),this->frame2_pyr_.img_levels.end());
-    this->frame2_pyr_.img_levels.clear();
-
-    TicToc time_exec;
-    time_exec.tic();
-    this->frame1_pyr_.create_pyramid(frame1,level,win_size);
-    this->frame2_pyr_.create_pyramid(frame2,level,win_size);
-    std::cout<<"Time create pyr: ";
-    time_exec.toc();
-
-
-    std::cout<<"levels: "<<this->frame1_pyr_.img_levels.size()<<std::endl;
-
-    // namedWindow( "pyramid", 1 );
-
-    // for(int i = 0; i < this->frame1_pyr_.n_levels ; i++)
-    // {
-    //     imshow("pyramid", this->frame1_pyr_.img_levels.at(i));
-    //     waitKey(0);
-    //     imshow("pyramid", this->frame2_pyr_.img_levels.at(i));
-    //     waitKey(0);
-    // }
-
-    //std::cout<<this->frame1_pyr_.n_levels<<std::endl;
-
-    time_exec.tic();
-
     // For all features
     for(int f = 0; f<features_copy.size(); f++)
     {
-        if(features_copy.at(f).x < 0.0f || features_copy.at(f).x > frame2.cols || features_copy.at(f).y < 0.0f || features_copy.at(f).y >= frame2.rows)
+        if(features_copy.at(f).x - (float)win_size < 0.0f || features_copy.at(f).x + (float)win_size > frame2.cols || features_copy.at(f).y - (float)win_size < 0.0f || features_copy.at(f).y + (float)win_size >= frame2.rows)
         {
             // Don't track feature that are outside the image
             //std::cout<<"Features out"<<std::endl;
@@ -88,6 +58,40 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             continue;
         }
         //std::cout<<"feature "<<f<<" : "<<features_copy.at(f)<<std::endl;
+
+        /**********************************************************/
+        this->frame1_pyr_.img_levels.erase(this->frame1_pyr_.img_levels.begin(),this->frame1_pyr_.img_levels.end());
+        this->frame1_pyr_.img_levels.clear();
+
+        this->frame2_pyr_.img_levels.erase(this->frame2_pyr_.img_levels.begin(),this->frame2_pyr_.img_levels.end());
+        this->frame2_pyr_.img_levels.clear();
+
+        TicToc time_exec;
+        time_exec.tic();
+        this->frame1_pyr_.create_pyramid(frame1,level,win_size,features_copy.at(f));
+        this->frame2_pyr_.create_pyramid(frame2,level,win_size,features_copy.at(f));
+        std::cout<<"Time create pyr: ";
+        time_exec.toc();
+
+
+        std::cout<<"levels: "<<this->frame1_pyr_.img_levels.size()<<std::endl;
+
+        namedWindow( "pyramid", 1 );
+
+        for(int i = 0; i < this->frame1_pyr_.n_levels ; i++)
+        {
+            imshow("pyramid", this->frame1_pyr_.img_levels.at(i));
+            waitKey(0);
+            imshow("pyramid", this->frame2_pyr_.img_levels.at(i));
+            waitKey(0);
+        }
+
+        //std::cout<<this->frame1_pyr_.n_levels<<std::endl;
+
+
+
+
+        /**********************************************************/
         
         cv::Mat d_position_final = cv::Mat::zeros(2,1,frame1.type());
         cv::Mat pyramid_position = cv::Mat::zeros(2,1,frame1.type());
@@ -107,11 +111,11 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             if(index_row_start < 0.0f)
                 index_row_start = 0.0f;
             float index_col_end = current_point.x + (float)win_size;
-            if(index_col_end > (float)this->frame1_pyr_.img_levels.at(temp_level).cols)
-                index_col_end = (float)this->frame1_pyr_.img_levels.at(temp_level).cols;
+            if(index_col_end >= (float)this->frame1_pyr_.img_levels.at(temp_level).cols)
+                index_col_end = (float)this->frame1_pyr_.img_levels.at(temp_level).cols - 1.0f;
             float index_row_end = current_point.y + (float)win_size;
-            if(index_row_end > (float)this->frame1_pyr_.img_levels.at(temp_level).rows)
-                index_row_end = (float)this->frame1_pyr_.img_levels.at(temp_level).rows;
+            if(index_row_end >= (float)this->frame1_pyr_.img_levels.at(temp_level).rows)
+                index_row_end = (float)this->frame1_pyr_.img_levels.at(temp_level).rows - 1.0f;
 
             //std::cout<<"indices: "<<index_col_start<<", "<<index_col_end<<" // "<<index_row_start<<", "<<index_row_end<<std::endl;
             
@@ -267,6 +271,5 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             //std::cout<<"add feature "<<f<<std::endl; 
         }
     }
-    std::cout<<"Time track features: ";
-    time_exec.toc();
+    //std::cout<<"Time track features: ";
 }

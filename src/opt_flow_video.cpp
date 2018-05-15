@@ -217,19 +217,19 @@ void OptFlowVideo::write_image_with_optical_flow(bool show_output)
         // Put in points[1] the new locations of each features
         vector<uchar> status;
         vector<float> err;
-        calcOpticalFlowPyrLK(prev_gray, gray, points[0], points[1], status, err, this->win_size_, this->max_level_pyramids_, this->term_crit_, this->use_harris_detector_, this->min_eigen_threshold_);
+        //calcOpticalFlowPyrLK(prev_gray, gray, points[0], points[1], status, err, this->win_size_, this->max_level_pyramids_, this->term_crit_, this->use_harris_detector_, this->min_eigen_threshold_);
         
         // OWN VERSION
-        // Mat gray1_float, gray2_float;
-        // prev_gray.convertTo(gray1_float, CV_32FC3,1/255.0);
-        // gray.convertTo(gray2_float, CV_32FC3,1/255.0);
-        // this->estim_flow.compute_lk(gray1_float, gray2_float, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
+        Mat gray1_float, gray2_float;
+        prev_gray.convertTo(gray1_float, CV_32FC3,1/255.0);
+        gray.convertTo(gray2_float, CV_32FC3,1/255.0);
+        this->estim_flow.compute_lk(gray1_float, gray2_float, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
 
         // For loop in order to draw the optical flow and features on the images
         for( i = 0; i < points[1].size(); i++ )
         {
-            if( !status[i] )
-                continue;
+            // if( !status[i] )
+            //     continue;
             // Draw a circle for the featurs
             circle( image, points[1][i], 3, Scalar(0,255,0), -1, 8);
             // Draw a line for the optical flow
@@ -328,6 +328,9 @@ void OptFlowVideo::write_vector_video(bool write_json_vector, bool show_output, 
     boost::property_tree::ptree pt, pt_general;
     // Counter to know which frame it's processing
     int cpt = 1;
+    // Get the mean time of execution per frame
+    double mean_time = 0.0f;
+    double cpt_time = 0.0f;
     // TicToc class to handle time of execution
     TicToc time_exec;
     std::cout<<"Time to Calc LK Optical Flow"<<std::endl;
@@ -359,24 +362,31 @@ void OptFlowVideo::write_vector_video(bool write_json_vector, bool show_output, 
         // Compute the optical flow for each feature
         vector<uchar> status;
         vector<float> err;
-        time_exec.tic();
-        calcOpticalFlowPyrLK(prev_gray, gray, points[0], points[1], status, err, this->win_size_, this->max_level_pyramids_, this->term_crit_, this->use_harris_detector_, this->min_eigen_threshold_);
-        
-        // OWN VERSION
-        // Mat gray1_float, gray2_float;
-        // prev_gray.convertTo(gray1_float, CV_32FC3,1/255.0);
-        // gray.convertTo(gray2_float, CV_32FC3,1/255.0);
-        // this->estim_flow.compute_lk(gray1_float, gray2_float, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
-        
-        
-        std::cout<<"Frame "<<cpt<<": ";
-        time_exec.toc();
-        std::cout<<"--------------------------------------"<<std::endl;
+
+        if(!points[0].empty())
+        {
+            time_exec.tic();
+            //calcOpticalFlowPyrLK(prev_gray, gray, points[0], points[1], status, err, this->win_size_, this->max_level_pyramids_, this->term_crit_, this->use_harris_detector_, this->min_eigen_threshold_);
+            
+            // OWN VERSION
+            Mat gray1_float, gray2_float;
+            prev_gray.convertTo(gray1_float, CV_32FC3,1/255.0);
+            gray.convertTo(gray2_float, CV_32FC3,1/255.0);
+            this->estim_flow.compute_lk(gray1_float, gray2_float, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
+            
+            
+            std::cout<<"Frame "<<cpt<<": ";
+            mean_time += time_exec.toc();
+            cpt_time = cpt_time + 1.0f;
+            std::cout<<"--------------------------------------"<<std::endl;
+        }
+
+
         // For loop to draw the vectors on each frame
         for( i = k = 0; i < points[1].size(); i++ )
         {
-            if( !status[i] )
-                continue;
+            // if( !status[i] )
+            //     continue;
             // Compute the vector of the optical flow between two frames
             vector_flow.at(0).at(i) = (points[1][i].x - points[0][i].x);
             vector_flow.at(1).at(i) = (points[1][i].y - points[0][i].y);
@@ -424,6 +434,10 @@ void OptFlowVideo::write_vector_video(bool write_json_vector, bool show_output, 
 
         cpt++;
     }
+
+    // Print mean time of execution per frame
+    mean_time = mean_time / cpt_time;
+    std::cout<<"Mean time per frame: "<<mean_time<<" ("<<cpt_time<<" frames)"<<std::endl;
 
     if(write_json_vector)
     {
