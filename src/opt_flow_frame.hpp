@@ -85,6 +85,10 @@ class OptFlowFrame{
         void set_term_criteria(TermCriteria term_criteria_temp){term_crit_ = term_criteria_temp;};
         TermCriteria get_term_criteria(){return term_crit_;};
 
+        // {get, set} for use_opencv_cv_lk
+        void set_use_opencv_lk(bool use_opencv_lk_temp){use_opencv_lk_ = use_opencv_lk_temp;};
+        bool get_use_opencv_lk(){return use_opencv_lk_;};
+
     private:
 
         //Video attributs:
@@ -109,6 +113,9 @@ class OptFlowFrame{
         TermCriteria term_crit_;
         Size win_size_;
         int max_level_pyramids_;
+
+        // Use OpenCV LK or our own alg
+        bool use_opencv_lk_;
 
         //Own LK OpticalFlow calc
         int max_iterations_;

@@ -62,7 +62,7 @@ class OptFlowVideo{
         int get_block_size(){return block_size_;};
 
         // {get, set} for use_harris_detector
-        void set_use_harris_detector(bool _use_harris_detector_temp){use_harris_detector_ = _use_harris_detector_temp;};
+        void set_use_harris_detector(bool use_harris_detector_temp){use_harris_detector_ = use_harris_detector_temp;};
         bool get_use_harris_detector(){return use_harris_detector_;};
         
         // {get, set} for win_size_
@@ -88,6 +88,10 @@ class OptFlowVideo{
         // {get, set} for term_criteria_
         void set_term_criteria(TermCriteria term_criteria_temp){term_crit_ = term_criteria_temp;};
         TermCriteria get_term_criteria(){return term_crit_;};
+
+        // {get, set} for use_opencv_lk_
+        void set_use_opencv_lk(bool use_opencv_lk_temp){use_opencv_lk_ = use_opencv_lk_temp;};
+        bool get_use_opencv_lk(){return use_opencv_lk_;};
 
     private:
 
@@ -117,6 +121,9 @@ class OptFlowVideo{
         TermCriteria term_crit_;
         Size win_size_;
         int max_level_pyramids_;
+        
+        // Boolean to use OpenCV or our own alg
+        bool use_opencv_lk_;
 
         //Own LK OpticalFlow calc
         int max_iterations_;

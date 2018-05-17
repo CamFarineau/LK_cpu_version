@@ -11,19 +11,18 @@ class Pyramid
 {
     public:
     Pyramid();
-    void create_pyramid(cv::Mat& img, int level, int win_size);
-    void create_pyramid_gradx(Pyramid& img_pyr, int level);
-    void create_pyramid_grady(Pyramid& img_pyr, int level);    
+    void create_pyramid(cv::Mat& img, int level, int win_size);  
     int n_levels;
     vector<cv::Mat> img_levels;
 
     private:
+
+    void subsampling(cv::Mat& upper_level, cv::Mat& new_level, int nrows, int ncols);
+    void separable_conv(cv::Mat &src,cv::Mat &dst);
+    void separable_conv_with_subsampling(cv::Mat &src, cv::Mat &dst, int n_rows, int n_cols);
     cv::Mat gaussian_kernel_hor_;
     cv::Mat gaussian_kernel_ver_;
-    cv::Mat gaussian_kernel_gradx_hor_;
-    cv::Mat gaussian_kernel_gradx_ver_;
-    cv::Mat gaussian_kernel_grady_hor_;
-    cv::Mat gaussian_kernel_grady_ver_;
+    cv::Mat gaussian_kernel_;
  
 };
 

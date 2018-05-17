@@ -4,12 +4,14 @@
 #include <nana/gui/widgets/button.hpp>
 #include <nana/gui/widgets/textbox.hpp>
 #include <nana/gui/widgets/label.hpp>
+#include <opencv2/opencv.hpp>
 #include "gui.hpp"
 
 using namespace std;
 
 int main(int argc, char** argv)
 {
+    cv::setUseOptimized(false);
     Gui gui;
     gui.init_gui();
     gui.execute();

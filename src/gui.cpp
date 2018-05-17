@@ -17,6 +17,7 @@ void Gui::set_parameters()
     this->directory.video_to_process.set_epsilon_criteria(std::atof(this->epsilon_criteria_box.caption().c_str()));
     this->directory.video_to_process.set_use_harris_detector(this->use_harris_detector_box.checked());
     this->directory.video_to_process.set_term_criteria(TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,std::stoi(this->max_iterations_box.caption()),std::atof(this->epsilon_criteria_box.caption().c_str())));
+    this->directory.video_to_process.set_use_opencv_lk(this->use_opencv_lk_box_.checked());
 
     this->directory.directory_frame_to_process.set_max_features(std::stoi(this->max_features_box.caption()));
     this->directory.directory_frame_to_process.set_quality_level(std::atof(this->quality_level_box.caption().c_str()));
@@ -29,6 +30,7 @@ void Gui::set_parameters()
     this->directory.directory_frame_to_process.set_epsilon_criteria(std::atof(this->epsilon_criteria_box.caption().c_str()));
     this->directory.directory_frame_to_process.set_use_harris_detector(this->use_harris_detector_box.checked());
     this->directory.directory_frame_to_process.set_term_criteria(TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,std::stoi(this->max_iterations_box.caption()),std::atof(this->epsilon_criteria_box.caption().c_str())));
+    this->directory.directory_frame_to_process.set_use_opencv_lk(this->use_opencv_lk_box_.checked());
 
     this->directory.process_all_videos_folder(this->path_box.caption());
 }
@@ -80,6 +82,9 @@ void Gui::init_gui()
     this->use_harris_detector_label.caption("Use Harris detector");
     this->use_harris_detector_label.bgcolor(colors::azure);
 
+    this->use_opencv_lk_label_.caption("Use OpenCV LK");
+    this->use_opencv_lk_label_.bgcolor(colors::azure);
+
     
 
     this->path_box.tip_string("/home/..."    ).multi_lines(false);
@@ -102,9 +107,9 @@ void Gui::init_gui()
 
 
     //The div-text
-    this->layout.div("<><weight=40% vertical<><weight=70% vertical <vertical gap=10 labels arrange=[25,25,25,25,25,25,25,25,25,25,25,25]> <> <weight=25 gap=10 button_start> ><>><weight=40% vertical<><weight=70% vertical <vertical gap=10 textboxs arrange=[25,25,25,25,25,25,25,25,25,25,25,25]> <> <weight=25 gap=10 button_quit> ><>><>");
-    this->layout.field("labels") << this->path_label << this->max_features_label << this->quality_level_label << this->min_distance_label << this ->block_size_label << this->win_size_height_label << this->win_size_width_label << this->max_level_pyramids_label << this->max_iterations_label << this->min_eigen_threshold_label << this->epsilon_criteria_label << this->use_harris_detector_label;
-    this->layout.field("textboxs") << this->path_box << this->max_features_box << this->quality_level_box << this->min_distance_box << this ->block_size_box << this->win_size_height_box << this->win_size_width_box << this->max_level_pyramids_box << this->max_iterations_box << this->min_eigen_threshold_box << this->epsilon_criteria_box << this->use_harris_detector_box;
+    this->layout.div("<><weight=40% vertical<><weight=70% vertical <vertical gap=10 labels arrange=[25,25,25,25,25,25,25,25,25,25,25,25,25]> <> <weight=25 gap=10 button_start> ><>><weight=40% vertical<><weight=70% vertical <vertical gap=10 textboxs arrange=[25,25,25,25,25,25,25,25,25,25,25,25,25]> <> <weight=25 gap=10 button_quit> ><>><>");
+    this->layout.field("labels") << this->path_label << this->max_features_label << this->quality_level_label << this->min_distance_label << this ->block_size_label << this->win_size_height_label << this->win_size_width_label << this->max_level_pyramids_label << this->max_iterations_label << this->min_eigen_threshold_label << this->epsilon_criteria_label << this->use_harris_detector_label << this->use_opencv_lk_label_;
+    this->layout.field("textboxs") << this->path_box << this->max_features_box << this->quality_level_box << this->min_distance_box << this ->block_size_box << this->win_size_height_box << this->win_size_width_box << this->max_level_pyramids_box << this->max_iterations_box << this->min_eigen_threshold_box << this->epsilon_criteria_box << this->use_harris_detector_box << this->use_opencv_lk_box_;
     this->layout.field("button_start") << this->btn_start;
     this->layout.field("button_quit") << this->btn_quit;
     this->layout.collocate();

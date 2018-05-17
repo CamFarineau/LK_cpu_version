@@ -39,6 +39,7 @@ class Gui{
     label max_iterations_label{fm};
     label min_eigen_threshold_label{fm};
     label epsilon_criteria_label{fm};
+    label use_opencv_lk_label_{fm};
 
     textbox path_box{fm};
     textbox max_features_box{fm};
@@ -53,6 +54,7 @@ class Gui{
     textbox epsilon_criteria_box{fm};
 
     checkbox use_harris_detector_box{fm};
+    checkbox use_opencv_lk_box_{fm};
 
     button btn_start{fm};
     button btn_quit{fm};

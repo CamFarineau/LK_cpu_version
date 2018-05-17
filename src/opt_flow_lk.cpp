@@ -47,21 +47,42 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
     int nb_feature_erased = 0;
 
-    this->frame1_pyr_.img_levels.erase(this->frame1_pyr_.img_levels.begin(),this->frame1_pyr_.img_levels.end());
-    this->frame1_pyr_.img_levels.clear();
+    TicToc time_exec;
+    time_exec.tic();
+
+    Mat frame1_float, frame2_float;
+    frame1.convertTo(frame1_float, CV_32FC3,1/255.0);
+    frame2.convertTo(frame2_float, CV_32FC3,1/255.0);
+
+    if(!this->frame2_pyr_.img_levels.empty())
+    {
+        std::swap(this->frame1_pyr_.img_levels,this->frame2_pyr_.img_levels);
+        this->frame1_pyr_.n_levels = this->frame2_pyr_.n_levels;
+        //std::cout<<"swap"<<std::endl;
+    }
+    else
+    {
+        this->frame1_pyr_.img_levels.erase(this->frame1_pyr_.img_levels.begin(),this->frame1_pyr_.img_levels.end());
+        this->frame1_pyr_.img_levels.clear();
+        //std::cout<<"new pyr frame1"<<std::endl;
+    }
+
 
     this->frame2_pyr_.img_levels.erase(this->frame2_pyr_.img_levels.begin(),this->frame2_pyr_.img_levels.end());
     this->frame2_pyr_.img_levels.clear();
 
-    TicToc time_exec;
-    time_exec.tic();
-    this->frame1_pyr_.create_pyramid(frame1,level,win_size);
-    this->frame2_pyr_.create_pyramid(frame2,level,win_size);
+    
+    if(this->frame1_pyr_.img_levels.empty())
+    {
+        //std::cout<<"reuse pyr frame1"<<std::endl;
+        this->frame1_pyr_.create_pyramid(frame1_float,level,win_size);
+    }
+    this->frame2_pyr_.create_pyramid(frame2_float,level,win_size);
     std::cout<<"Time create pyr: ";
     time_exec.toc();
 
 
-    std::cout<<"levels: "<<this->frame1_pyr_.img_levels.size()<<std::endl;
+    //std::cout<<"levels: "<<this->frame1_pyr_.img_levels.size()<<std::endl;
 
     // namedWindow( "pyramid", 1 );
 
@@ -89,8 +110,8 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
         }
         //std::cout<<"feature "<<f<<" : "<<features_copy.at(f)<<std::endl;
         
-        cv::Mat d_position_final = cv::Mat::zeros(2,1,frame1.type());
-        cv::Mat pyramid_position = cv::Mat::zeros(2,1,frame1.type());
+        cv::Mat d_position_final = cv::Mat::zeros(2,1,frame1_float.type());
+        cv::Mat pyramid_position = cv::Mat::zeros(2,1,frame1_float.type());
 
         Status status = Status::Tracked;
 
@@ -115,7 +136,7 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
             //std::cout<<"indices: "<<index_col_start<<", "<<index_col_end<<" // "<<index_row_start<<", "<<index_row_end<<std::endl;
             
-            cv::Mat gradient_mat = cv::Mat::zeros(2,2,frame1.type());
+            cv::Mat gradient_mat = cv::Mat::zeros(2,2,frame1_float.type());
 
             std::vector<Point2f> derivatives;
 
@@ -161,13 +182,13 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             gradient_mat = gradient_mat.inv();
             //std::cout<<"grad mat inv: "<<gradient_mat<<std::endl<<std::endl;
 
-            cv::Mat d_position = cv::Mat::zeros(2,1,frame1.type());
+            cv::Mat d_position = cv::Mat::zeros(2,1,frame1_float.type());
 
             int iteration = 0;
             float x_abs,y_abs, norm_temp;
 
             do{
-                cv::Mat image_mismatch = cv::Mat::zeros(2,1,frame1.type());
+                cv::Mat image_mismatch = cv::Mat::zeros(2,1,frame1_float.type());
 
                 int cpt = 0;
                 x_abs = 0.0f;
@@ -180,6 +201,8 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
                         float next_index_i = i + pyramid_position.at<float>(0,0) + d_position.at<float>(0, 0);
                         float next_index_j = j + pyramid_position.at<float>(0,1) + d_position.at<float>(0, 1);
 
+                        //std::cout<<"next index i: "<<next_index_i<<"/ j: "<<next_index_j<<std::endl;
+
                         float img_difference = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j)) - get_subpixel_value(this->frame2_pyr_.img_levels.at(temp_level),Point2f(next_index_i,next_index_j));
                         image_mismatch.at<float>(Point(0,0)) += img_difference * derivatives.at(cpt).x;
                         image_mismatch.at<float>(Point(0,1)) += img_difference * derivatives.at(cpt).y;
@@ -188,7 +211,7 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
                     }
                 }
                 //std::cout<<"image mismatch"<<image_mismatch<<std::endl;
-                cv::Mat temp = cv::Mat::zeros(2,1,frame1.type());
+                cv::Mat temp = cv::Mat::zeros(2,1,frame1_float.type());
                 temp = gradient_mat * image_mismatch;
                 //std::cout<<"temp float pos: "<<temp<<std::endl;
 
@@ -269,4 +292,13 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
     }
     std::cout<<"Time track features: ";
     time_exec.toc();
+}
+
+void OptFlowLK::release_pyr()
+{
+    this->frame1_pyr_.img_levels.erase(this->frame1_pyr_.img_levels.begin(),this->frame1_pyr_.img_levels.end());
+    this->frame1_pyr_.img_levels.clear();
+
+    this->frame2_pyr_.img_levels.erase(this->frame2_pyr_.img_levels.begin(),this->frame2_pyr_.img_levels.end());
+    this->frame2_pyr_.img_levels.clear();
 }

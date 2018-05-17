@@ -18,6 +18,7 @@ OptFlowVideo::OptFlowVideo()
     this->epsilon_criteria_ = 0.01f;
     this->term_crit_ = TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,30,0.01);
     this->estim_flow = OptFlowLK();
+    this->use_opencv_lk_ = false;
 }
 
 OptFlowVideo::OptFlowVideo(string filepath_temp)
@@ -36,6 +37,7 @@ OptFlowVideo::OptFlowVideo(string filepath_temp)
     this->epsilon_criteria_ = 0.01f;
     this->term_crit_ = TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,30,0.01);
     this->estim_flow = OptFlowLK();
+    this->use_opencv_lk_ = false;
 }
 
 void OptFlowVideo::set_filepath(string filepath_temp)
@@ -217,19 +219,24 @@ void OptFlowVideo::write_image_with_optical_flow(bool show_output)
         // Put in points[1] the new locations of each features
         vector<uchar> status;
         vector<float> err;
-        calcOpticalFlowPyrLK(prev_gray, gray, points[0], points[1], status, err, this->win_size_, this->max_level_pyramids_, this->term_crit_, this->use_harris_detector_, this->min_eigen_threshold_);
-        
-        // OWN VERSION
-        // Mat gray1_float, gray2_float;
-        // prev_gray.convertTo(gray1_float, CV_32FC3,1/255.0);
-        // gray.convertTo(gray2_float, CV_32FC3,1/255.0);
-        // this->estim_flow.compute_lk(gray1_float, gray2_float, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
+        if(this->use_opencv_lk_)
+        {
+            calcOpticalFlowPyrLK(prev_gray, gray, points[0], points[1], status, err, this->win_size_, this->max_level_pyramids_, this->term_crit_, this->use_harris_detector_, this->min_eigen_threshold_);
+        }
+        else
+        {
+            // OWN VERSION
+            this->estim_flow.compute_lk(prev_gray, gray, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
+        }        
 
         // For loop in order to draw the optical flow and features on the images
         for( i = 0; i < points[1].size(); i++ )
         {
-            if( !status[i] )
-                continue;
+            if(this->use_opencv_lk_)
+            {
+                if( !status[i] )
+                    continue;
+            }
             // Draw a circle for the featurs
             circle( image, points[1][i], 3, Scalar(0,255,0), -1, 8);
             // Draw a line for the optical flow
@@ -264,6 +271,9 @@ void OptFlowVideo::write_image_with_optical_flow(bool show_output)
 
     // Write the first frame with optical flow for each features in the correct file
     imwrite(this->path_to_data_folder_ + this->filename_ + "_opt_flow.jpg", first_frame_temp );
+
+    // Release pyramids of estim_flow
+    this->estim_flow.release_pyr(); 
 
     // Reload the video (it's now at the end of the video so it need to be reloaded if the user wants to use another function right after this one)
     this->video_.open(this->filepath_);
@@ -327,9 +337,12 @@ void OptFlowVideo::write_vector_video(bool write_json_vector, bool show_output, 
     // Create a property_tree that will contains the vectors for each frames
     boost::property_tree::ptree pt, pt_general;
     // Counter to know which frame it's processing
-    int cpt = 1;
+    int cpt = 1, cpt_time = 1;
     // TicToc class to handle time of execution
     TicToc time_exec;
+    // Double to compute mean time per frame
+    double mean_time = 0.0f;
+
     std::cout<<"Time to Calc LK Optical Flow"<<std::endl;
     // This while loop will be break at the end of the video
     while(1)
@@ -359,30 +372,40 @@ void OptFlowVideo::write_vector_video(bool write_json_vector, bool show_output, 
         // Compute the optical flow for each feature
         vector<uchar> status;
         vector<float> err;
-        time_exec.tic();
-        calcOpticalFlowPyrLK(prev_gray, gray, points[0], points[1], status, err, this->win_size_, this->max_level_pyramids_, this->term_crit_, this->use_harris_detector_, this->min_eigen_threshold_);
+
+        if(!points[0].empty())
+        {
+            time_exec.tic();
+            if(this->use_opencv_lk_)
+            {
+                calcOpticalFlowPyrLK(prev_gray, gray, points[0], points[1], status, err, this->win_size_, this->max_level_pyramids_, this->term_crit_, this->use_harris_detector_, this->min_eigen_threshold_);
+            }
+            else
+            {
+                // OWN VERSION
+                this->estim_flow.compute_lk(prev_gray, gray, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
+            }             
+            std::cout<<"Frame "<<cpt<<": ";
+            mean_time += time_exec.toc();
+            std::cout<<"--------------------------------------"<<std::endl;
+            cpt_time++;
+        }
         
-        // OWN VERSION
-        // Mat gray1_float, gray2_float;
-        // prev_gray.convertTo(gray1_float, CV_32FC3,1/255.0);
-        // gray.convertTo(gray2_float, CV_32FC3,1/255.0);
-        // this->estim_flow.compute_lk(gray1_float, gray2_float, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
-        
-        
-        std::cout<<"Frame "<<cpt<<": ";
-        time_exec.toc();
-        std::cout<<"--------------------------------------"<<std::endl;
+
         // For loop to draw the vectors on each frame
         for( i = k = 0; i < points[1].size(); i++ )
         {
-            if( !status[i] )
-                continue;
+            if(this->use_opencv_lk_)
+            {
+                if( !status[i] )
+                    continue;
+            }
             // Compute the vector of the optical flow between two frames
             vector_flow.at(0).at(i) = (points[1][i].x - points[0][i].x);
             vector_flow.at(1).at(i) = (points[1][i].y - points[0][i].y);
             // Draw arrowed line the correct frame
-            arrowedLine(image, points[0][i],points[0][i] + Point2f(vector_flow[0][i],vector_flow[1][i])*20.0, Scalar(255,0,0),2);
-            //circle( image, points[1][i], 2, Scalar(0,255,0), -1, 8);
+            //arrowedLine(image, points[0][i],points[0][i] + Point2f(vector_flow[0][i],vector_flow[1][i])*20.0, Scalar(255,0,0),2);
+            circle( image, points[1][i], 2, Scalar(0,255,0), -1, 8);
         }
 
         // If the user wants the json file
@@ -425,6 +448,10 @@ void OptFlowVideo::write_vector_video(bool write_json_vector, bool show_output, 
         cpt++;
     }
 
+    // Compute mean time per frame
+    mean_time = mean_time / cpt_time;
+    std::cout<<"mean time per frame: "<<mean_time<<" for "<<cpt_time<<" frames."<<std::endl;
+
     if(write_json_vector)
     {
         // Add the general tree to the main tree as a child
@@ -433,6 +460,10 @@ void OptFlowVideo::write_vector_video(bool write_json_vector, bool show_output, 
         boost::property_tree::write_json(this->path_to_data_folder_ + this->filename_ + "_vectors.json", pt);
         std::cout<<"JSON file of vectors of each features at each frames can be found at: "<<this->path_to_data_folder_ + this->filename_ + "_vectors.json"<<std::endl<<std::endl;
     }
+
+    // Release pyramids of estim_flow
+    this->estim_flow.release_pyr(); 
+
 
     // Reload the video (the stream of the video is at the end so it's need to be reloaded if the user wants to use another function right after)
     this->video_.open(this->filepath_);
