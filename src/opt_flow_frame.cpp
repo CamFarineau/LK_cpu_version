@@ -253,17 +253,14 @@ void OptFlowFrame::write_first_frame_with_optical_flow(bool show_output)
         else
         {
             // OWN VERSION
-            this->estim_flow.compute_lk(prev_gray, gray, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
+            this->estim_flow.compute_lk(prev_gray, gray, points[0], points[1], status, this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
         }
 
         // For loop in order to draw the optical flow and features on the images
         for( i = 0; i < points[1].size(); i++ )
         {
-            if(this->use_opencv_lk_)
-            {
-                if( !status[i] )
-                    continue;
-            }
+            if( !status[i] )
+                continue;
             // Draw a circle for the featurs
             circle( image, points[1][i], 3, Scalar(0,255,0), -1, 8);
             // Draw a line for the optical flow
@@ -387,7 +384,7 @@ void OptFlowFrame::write_vector_video(bool write_json_vector, bool show_output, 
         else
         {
             // OWN VERSION
-            this->estim_flow.compute_lk(prev_gray, gray, points[0], points[1],this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
+            this->estim_flow.compute_lk(prev_gray, gray, points[0], points[1], status, this->win_size_.height,this->max_level_pyramids_,this->min_eigen_threshold_,this->max_iterations_,this->epsilon_criteria_);
         }
        
         std::cout<<"Frame "<<j<<": ";
@@ -396,11 +393,8 @@ void OptFlowFrame::write_vector_video(bool write_json_vector, bool show_output, 
         // For loop to draw the vectors on each frame
         for( i = 0; i < points[1].size(); i++ )
         {
-            if(this->use_opencv_lk_)
-            {
-                if( !status[i] )
-                    continue;   
-            }
+            if( !status[i] )
+                continue;
 
             // Compute the vector of the optical flow between two frames
             vector_flow.at(0).at(i) = (points[1][i].x - points[0][i].x);

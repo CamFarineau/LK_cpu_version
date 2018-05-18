@@ -17,7 +17,7 @@ class OptFlowLK
     public:
 
     OptFlowLK();
-    void compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, vector<Point2f>& new_features, int win_size, int level, float min_eigen_threshold, int max_iterations, float eps_criteria);
+    void compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, vector<Point2f>& new_features, vector<uchar>& status, int win_size, int level, float min_eigen_threshold, int max_iterations, float eps_criteria);
     void release_pyr();
     
     private:

@@ -19,19 +19,64 @@ float get_value (cv::Mat const &image, cv::Point2f index)
 }
 float get_subpixel_value (cv::Mat const &image, cv::Point2f index)
 {
-    float floor_col = (float) floor (index.x);
-    float floor_row = (float) floor (index.y);
+    // NEW VERSION WIP
+    int floor_col = static_cast<int>(std::floor(index.x));
+    int floor_col1 = floor_col + 1;
+    int floor_row = static_cast<int>(std::floor(index.y));
 
-    float fract_col = index.x - floor_col;
-    float fract_row = index.y - floor_row;
+    float fract_col = index.x - std::floor(index.x);
+    float fract_row = index.y - std::floor(index.y);
 
-    return        ((1.0f - fract_col) * (1.0f - fract_row) * get_value(image, cv::Point2f(floor_col, floor_row))
-                + (fract_col * (1.0f - fract_row) * get_value(image, cv::Point2f(floor_col + 1.0f, floor_row)))
-                + ((1.0f - fract_col) * fract_row * get_value(image, cv::Point2f(floor_col, floor_row + 1.0f)))
-                + (fract_col * fract_row * get_value(image, cv::Point2f(floor_col + 1.0f, floor_row + 1.0f))));
+    if (floor_col >= image.cols - 1)
+    {
+        floor_col = image.cols - 1;
+        floor_col1 = floor_col;
+    }
+    else if (floor_col < 0)
+    {
+        floor_col = 0;
+        floor_col1 = 1;
+    }
+
+    if (floor_row >= image.rows)
+        floor_row = image.rows - 1;
+    else if (floor_row < 0)
+        floor_row = 0;
+
+    float *srow0 = (float*)(image.data + image.step*floor_row);
+    float *srow1 = (float*)(image.data + image.step*std::min(floor_row + 1,image.rows - 1));
+
+    return        ((1.0f - fract_col) * (1.0f - fract_row) * srow0[floor_col])
+                + (fract_col * (1.0f - fract_row) * srow0[floor_col1])
+                + ((1.0f - fract_col) * fract_row * srow1[floor_col])
+                + (fract_col * fract_row * srow1[floor_col1]);
+
+    ///////////////////////////
+    
+    
+    // float floor_col = (float) std::floor(index.x);
+    // float floor_row = (float) std::floor(index.y);
+
+    // float fract_col = index.x - floor_col;
+    // float fract_row = index.y - floor_row;
+
+    // if (floor_col >= (float)image.cols)
+    //     floor_col = (float)image.cols - 1.0f;
+    // else if (floor_col < 0.0f)
+    //     floor_col = 0.0f;
+
+    // if (floor_row >= (float)image.rows)
+    //     floor_row = (float)image.rows - 1.0f;
+    // else if (floor_row < 0.0f)
+    //     floor_row = 0.0f;
+
+    // return        ((1.0f - fract_col) * (1.0f - fract_row) * get_value(image, cv::Point2f(floor_col, floor_row))
+    //             + (fract_col * (1.0f - fract_row) * get_value(image, cv::Point2f(floor_col + 1.0f, floor_row)))
+    //             + ((1.0f - fract_col) * fract_row * get_value(image, cv::Point2f(floor_col, floor_row + 1.0f)))
+    //             + (fract_col * fract_row * get_value(image, cv::Point2f(floor_col + 1.0f, floor_row + 1.0f))));
 }
 
-void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, vector<Point2f>& new_features, int win_size, int level, float min_eigen_threshold, int max_iterations, float eps_criteria)
+void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, vector<Point2f>& new_features, vector<uchar>& status, int win_size, int level, float min_eigen_threshold, int max_iterations, float eps_criteria)
 {
     new_features.erase(new_features.begin(),new_features.end());
     new_features.clear();
@@ -43,9 +88,7 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
     }
 
     //std::cout<<features.size()<<" features to track"<<std::endl;
-    vector<Point2f> features_copy(features);
-
-    int nb_feature_erased = 0;
+    status.reserve(features.size());
 
     TicToc time_exec;
     time_exec.tic();
@@ -78,8 +121,8 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
         this->frame1_pyr_.create_pyramid(frame1_float,level,win_size);
     }
     this->frame2_pyr_.create_pyramid(frame2_float,level,win_size);
-    std::cout<<"Time create pyr: ";
-    time_exec.toc();
+    // std::cout<<"Time create pyr: ";
+    // time_exec.toc();
 
 
     //std::cout<<"levels: "<<this->frame1_pyr_.img_levels.size()<<std::endl;
@@ -96,28 +139,28 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
     //std::cout<<this->frame1_pyr_.n_levels<<std::endl;
 
-    time_exec.tic();
+    // time_exec.tic();
 
     // For all features
-    for(int f = 0; f<features_copy.size(); f++)
+    for(int f = 0; f < features.size(); f++)
     {
-        if(features_copy.at(f).x < 0.0f || features_copy.at(f).x > frame2.cols || features_copy.at(f).y < 0.0f || features_copy.at(f).y >= frame2.rows)
+        status[f] = true;
+        if(features.at(f).x < 0.0f || features.at(f).x > frame2.cols || features.at(f).y < 0.0f || features.at(f).y >= frame2.rows)
         {
             // Don't track feature that are outside the image
-            //std::cout<<"Features out"<<std::endl;
-            features_copy.erase(features_copy.begin() + f);
+            new_features.push_back(Point2f(-1.0f,-1.0f));
+            status[f] = false;
             continue;
         }
-        //std::cout<<"feature "<<f<<" : "<<features_copy.at(f)<<std::endl;
+        //std::cout<<"feature "<<f<<" : "<<features.at(f)<<std::endl;
         
-        cv::Mat d_position_final = cv::Mat::zeros(2,1,frame1_float.type());
-        cv::Mat pyramid_position = cv::Mat::zeros(2,1,frame1_float.type());
+        Point2f d_position_final(0.0f,0.0f), pyramid_position(0.0f,0.0f);
 
-        Status status = Status::Tracked;
+        Status status_description = Status::Tracked;
 
         for(int temp_level = this->frame1_pyr_.img_levels.size() - 1; temp_level >= 0; temp_level-- )
         {
-            Point2f current_point = Point2f(features_copy.at(f).x / pow(2,temp_level),features_copy.at(f).y / pow(2,temp_level));
+            Point2f current_point = Point2f(features.at(f).x / pow(2,temp_level),features.at(f).y / pow(2,temp_level));
             
             //std::cout<<"Feature: "<<current_point<<std::endl;
             // Define the area corresponding to the window
@@ -135,12 +178,11 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
                 index_row_end = (float)this->frame1_pyr_.img_levels.at(temp_level).rows;
 
             //std::cout<<"indices: "<<index_col_start<<", "<<index_col_end<<" // "<<index_row_start<<", "<<index_row_end<<std::endl;
-            
-            cv::Mat gradient_mat = cv::Mat::zeros(2,2,frame1_float.type());
 
             std::vector<Point2f> derivatives;
 
             float g1 = 0.0f, g2 = 0.0f;
+            float gxx = 0.0f, gxy = 0.0f, gyy = 0.0f;
 
             for (float i = index_col_start; i <= index_col_end; i += 1.0f)
             {
@@ -153,44 +195,41 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
                     float gradx = (g1 - g2) / 2.0f;
 
-                    g1 = 0.0f;
-                    g2 = 0.0f;
-
                     g1 = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j + 1.0f));
                     g2 = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j - 1.0f));
 
                     float grady = (g1 - g2) / 2.0f;
 
-                    Point2f test = Point2f(gradx, grady);
-                    //std::cout<<"derivative: "<<test<<std::endl;
-                    derivatives.push_back(test);
+                    derivatives.push_back(Point2f(gradx, grady));
 
-                    gradient_mat.at<float>(Point(0, 0)) += gradx * gradx;
-                    gradient_mat.at<float>(Point(0, 1)) += gradx * grady;
-                    gradient_mat.at<float>(Point(1, 0)) += gradx * grady;
-                    gradient_mat.at<float>(Point(1, 1)) += grady * grady;
+                    gxx += gradx * gradx;
+                    gxy += gradx * grady;
+                    gyy += grady * grady;
                 }
             }
-            float det = gradient_mat.at<float>(Point(0, 0))*gradient_mat.at<float>(Point(1, 1)) - gradient_mat.at<float>(Point(0, 1))*gradient_mat.at<float>(Point(1, 0));
 
+            float det = gxx * gyy - gxy * gxy;
+            //float minEig = (gyy + gxx - std::sqrt((gxx-gyy)*(gxx-gyy) + 4.f*gxy*gxy))/(2*((win_size*2+1)*(win_size*2+1)));
+            
             if(det < min_eigen_threshold)
             {
-                status = Status::SmallDet;
+                status_description = Status::SmallDet;
+                status[f] = false;
                 break;
             }
+
+            det = 1.0f/det;
             //std::cout<<"grad mat: "<<gradient_mat<<std::endl<<std::endl;
-            gradient_mat = gradient_mat.inv();
-            //std::cout<<"grad mat inv: "<<gradient_mat<<std::endl<<std::endl;
 
-            cv::Mat d_position = cv::Mat::zeros(2,1,frame1_float.type());
+            // time_exec.tic();
+            Point2f d_position(0.0f,0.0f), delta(0.0f,0.0f), delta_prev(0.0f,0.0f), image_mismatch(0.0f,0.0f);
+            float x_abs,y_abs, x_abs_prev, y_abs_prev;
+            int cpt = 0;
 
-            int iteration = 0;
-            float x_abs,y_abs, norm_temp;
-
-            do{
-                cv::Mat image_mismatch = cv::Mat::zeros(2,1,frame1_float.type());
-
-                int cpt = 0;
+            for(int iteration = 0; iteration < max_iterations; iteration++)
+            {
+                image_mismatch = Point2f(0.0f,0.0f);
+                cpt = 0;
                 x_abs = 0.0f;
                 y_abs = 0.0f;
 
@@ -198,44 +237,47 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
                 {
                     for (float j = index_row_start; j <= index_row_end; j += 1.0f)
                     {
-                        float next_index_i = i + pyramid_position.at<float>(0,0) + d_position.at<float>(0, 0);
-                        float next_index_j = j + pyramid_position.at<float>(0,1) + d_position.at<float>(0, 1);
+                        float next_index_i = i + pyramid_position.x + d_position.x;
+                        float next_index_j = j + pyramid_position.y + d_position.y;
 
                         //std::cout<<"next index i: "<<next_index_i<<"/ j: "<<next_index_j<<std::endl;
 
                         float img_difference = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j)) - get_subpixel_value(this->frame2_pyr_.img_levels.at(temp_level),Point2f(next_index_i,next_index_j));
-                        image_mismatch.at<float>(Point(0,0)) += img_difference * derivatives.at(cpt).x;
-                        image_mismatch.at<float>(Point(0,1)) += img_difference * derivatives.at(cpt).y;
+                        image_mismatch.x += img_difference * derivatives.at(cpt).x;
+                        image_mismatch.y += img_difference * derivatives.at(cpt).y;
 
                         cpt++;
                     }
                 }
+
                 //std::cout<<"image mismatch"<<image_mismatch<<std::endl;
-                cv::Mat temp = cv::Mat::zeros(2,1,frame1_float.type());
-                temp = gradient_mat * image_mismatch;
-                //std::cout<<"temp float pos: "<<temp<<std::endl;
+                delta.x = det * (gyy * image_mismatch.x - gxy * image_mismatch.y);
+                delta.y = det * (-gxy * image_mismatch.x + gxx * image_mismatch.y);
 
-                x_abs = std::abs(temp.at<float>(Point(0,0)));
-                y_abs = std::abs(temp.at<float>(Point(0,1)));
-                //std::cout<<"norm: "<<norm_temp<<std::endl;
-
-                d_position.at<float>(Point(0,0)) += temp.at<float>(Point(0,0));
-                d_position.at<float>(Point(0,1)) += temp.at<float>(Point(0,1));
-
+                d_position.x += delta.x;
+                d_position.y += delta.y;
                 //std::cout<<"d_position: "<<d_position<<std::endl;
+
                 iteration++;
                 //std::cout<<"iteration: "<<iteration<<std::endl;
+                
 
-                image_mismatch.release();
-                temp.release();
+                if(std::abs(delta.x) <= eps_criteria && std::abs(delta.y) <= eps_criteria)
+                    break;
 
-            }while((x_abs >= eps_criteria || y_abs >= eps_criteria) && iteration < max_iterations);
-            //std::cout<<"iteration: "<<iteration<<std::endl;
-            if(iteration >= max_iterations)
-            {
-                status = Status::NotConverge;
-                break;
+                if(iteration > 0 && std::abs(delta_prev.x + delta.x) < 0.001f && std::abs(delta_prev.y + delta.y) < 0.001f)
+                {
+                    d_position.x -= 0.5f * delta.x;
+                    d_position.y -= 0.5f * delta.y;
+                    break;
+                }
+
+                delta_prev = delta;
             }
+            // std::cout<<"descente gradient: ";
+            // time_exec.toc();
+            //std::cout<<"iteration: "<<iteration<<std::endl;
+
             
             // // Check for Large Residue
             // float sum_window = 0.0f;
@@ -252,7 +294,8 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             // std::cout<<"Residue: "<<sum_window / (float)((win_size*2 + 1)*(win_size*2 + 1))<<std::endl;
             // if(sum_window / (float)((win_size*2 + 1)*(win_size*2 + 1)) > 10.0f)
             // {
-            //     status = Status::LargeResidue;
+            //     status_description = Status::LargeResidue;
+            //     status[f] = false;
             //     break;
             // }
 
@@ -262,26 +305,23 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             }
             else
             {
-                pyramid_position = 2 * (pyramid_position + d_position);
+                pyramid_position = 2.0f * (pyramid_position + d_position);
             }
-
-
-            gradient_mat.release();
-            d_position.release();
         }
 
         d_position_final += pyramid_position;
         //std::cout<<"d_position finale: "<<d_position_final<<std::endl;
-        //std::cout<<"Pos init: "<<features_copy.at(f)<<std::endl;
-        //std::cout<<"Status: "<<status<<std::endl;
+        //std::cout<<"Pos init: "<<features.at(f)<<std::endl;
+        //std::cout<<"Status: "<<status_description<<std::endl;
 
-        Point2f new_pos(features_copy.at(f).x + d_position_final.at<float>(Point(0, 0)),features_copy.at(f).y + d_position_final.at<float>(Point(0, 1)));
+        Point2f new_pos = features.at(f) + d_position_final;
+
         //std::cout<<"Pos finale: "<<new_pos<<std::endl;
-        if(status != Status::Tracked || new_pos.x - (float)win_size < 0.0f || new_pos.x + (float)win_size > frame2.cols || new_pos.y - (float)win_size < 0.0f || new_pos.y + (float)win_size >= frame2.rows)
+        if(status[f] == false || new_pos.x - (float)win_size < 0.0f || new_pos.x + (float)win_size > frame2.cols || new_pos.y - (float)win_size < 0.0f || new_pos.y + (float)win_size >= frame2.rows)
         {
-            //std::cout<<"feature "<<f<<" erased"<<std::endl;
-            features.erase(features.begin() + f - nb_feature_erased);
-            nb_feature_erased++;
+            std::cout<<"feature "<<f<<" erased. Status: "<<status_description<<std::endl;
+            new_features.push_back(Point2f(-1.0f,-1.0f));
+            status[f] = false;
             continue;
         }
         else
@@ -290,8 +330,8 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             //std::cout<<"add feature "<<f<<std::endl; 
         }
     }
-    std::cout<<"Time track features: ";
-    time_exec.toc();
+    // std::cout<<"Time track features: ";
+    // time_exec.toc();
 }
 
 void OptFlowLK::release_pyr()

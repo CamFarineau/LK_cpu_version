@@ -12,6 +12,7 @@ using namespace std;
 int main(int argc, char** argv)
 {
     cv::setUseOptimized(false);
+    cv::setNumThreads(1);
     Gui gui;
     gui.init_gui();
     gui.execute();
