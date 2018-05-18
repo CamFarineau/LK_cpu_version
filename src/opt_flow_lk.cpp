@@ -161,7 +161,7 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
         for(int temp_level = this->frame1_pyr_.img_levels.size() - 1; temp_level >= 0; temp_level-- )
         {
             Point2f current_point = Point2f(features.at(f).x / pow(2,temp_level),features.at(f).y / pow(2,temp_level));
-            
+
             //std::cout<<"Feature: "<<current_point<<std::endl;
             // Define the area corresponding to the window
             float index_col_start = current_point.x - (float)win_size;
@@ -179,7 +179,8 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
             //std::cout<<"indices: "<<index_col_start<<", "<<index_col_end<<" // "<<index_row_start<<", "<<index_row_end<<std::endl;
 
-            std::vector<Point2f> derivatives;
+            int nb_pix_win = (win_size * 2 + 1)*(win_size * 2 + 1), cpt = 0;
+            Point2f derivatives[nb_pix_win];
 
             float g1 = 0.0f, g2 = 0.0f;
             float gxx = 0.0f, gxy = 0.0f, gyy = 0.0f;
@@ -200,7 +201,8 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
                     float grady = (g1 - g2) / 2.0f;
 
-                    derivatives.push_back(Point2f(gradx, grady));
+                    derivatives[cpt] = Point2f(gradx, grady);
+                    cpt++;
 
                     gxx += gradx * gradx;
                     gxy += gradx * grady;
@@ -223,28 +225,25 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
             // time_exec.tic();
             Point2f d_position(0.0f,0.0f), delta(0.0f,0.0f), delta_prev(0.0f,0.0f), image_mismatch(0.0f,0.0f);
-            float x_abs,y_abs, x_abs_prev, y_abs_prev;
-            int cpt = 0;
+            float next_index_j,next_index_i,img_difference;
 
             for(int iteration = 0; iteration < max_iterations; iteration++)
             {
                 image_mismatch = Point2f(0.0f,0.0f);
                 cpt = 0;
-                x_abs = 0.0f;
-                y_abs = 0.0f;
 
                 for (float i = index_col_start; i <= index_col_end; i += 1.0f)
                 {
                     for (float j = index_row_start; j <= index_row_end; j += 1.0f)
                     {
-                        float next_index_i = i + pyramid_position.x + d_position.x;
-                        float next_index_j = j + pyramid_position.y + d_position.y;
+                        next_index_i = i + pyramid_position.x + d_position.x;
+                        next_index_j = j + pyramid_position.y + d_position.y;
 
                         //std::cout<<"next index i: "<<next_index_i<<"/ j: "<<next_index_j<<std::endl;
 
-                        float img_difference = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j)) - get_subpixel_value(this->frame2_pyr_.img_levels.at(temp_level),Point2f(next_index_i,next_index_j));
-                        image_mismatch.x += img_difference * derivatives.at(cpt).x;
-                        image_mismatch.y += img_difference * derivatives.at(cpt).y;
+                        img_difference = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j)) - get_subpixel_value(this->frame2_pyr_.img_levels.at(temp_level),Point2f(next_index_i,next_index_j));
+                        image_mismatch.x += img_difference * derivatives[cpt].x;
+                        image_mismatch.y += img_difference * derivatives[cpt].y;
 
                         cpt++;
                     }
