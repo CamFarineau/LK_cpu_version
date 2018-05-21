@@ -106,9 +106,10 @@ int OptFlowVideo::search_init_features()
     cvtColor(this->first_frame_, gray, COLOR_BGR2GRAY);
 
     // Search the features
-    //goodFeaturesToTrack(gray, this->init_features_, this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->block_size_, this->use_harris_detector_, 0.04);
+    std::cout<<"max feature: "<<this->max_features_<<std::endl;
+    goodFeaturesToTrack(gray, this->init_features_, this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->block_size_, this->use_harris_detector_, 0.04);
     // OLD VERSION
-    goodFeaturesToTrack(gray, this->init_features_, this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->use_harris_detector_, 0.04);
+    //goodFeaturesToTrack(gray, this->init_features_, this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->use_harris_detector_, 0.04);
 
     return 0;
 }
@@ -204,12 +205,12 @@ void OptFlowVideo::write_image_with_optical_flow(bool show_output)
         // Get the gray image
         cvtColor(frame, gray, COLOR_BGR2GRAY);
 
-        // if(cpt % 15 == 0)
-        // {
-        //     goodFeaturesToTrack(prev_gray, points[0], this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->block_size_, this->use_harris_detector_, 0.04);
-        //     // OLD VERSION
-        //     //goodFeaturesToTrack(gray, points[0], this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->use_harris_detector_, 0.04);
-        // }
+        if(cpt % 15 == 0)
+        {
+            goodFeaturesToTrack(prev_gray, points[0], this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->block_size_, this->use_harris_detector_, 0.04);
+            // OLD VERSION
+            //goodFeaturesToTrack(gray, points[0], this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->use_harris_detector_, 0.04);
+        }
 
         // Initialisation for the gray images
         if(prev_gray.empty())
@@ -355,12 +356,12 @@ void OptFlowVideo::write_vector_video(bool write_json_vector, bool show_output, 
         cvtColor(frame, gray, COLOR_BGR2GRAY);
 
         // To raise quality of tracking
-        // if(cpt % 15 == 0)
-        // {
-        //     goodFeaturesToTrack(prev_gray, points[0], this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->block_size_, this->use_harris_detector_, 0.04);
-        //     // OLD VERSION
-        //     //goodFeaturesToTrack(gray, points[0], this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->use_harris_detector_, 0.04);
-        // }
+        if(cpt % 15 == 0)
+        {
+            goodFeaturesToTrack(prev_gray, points[0], this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->block_size_, this->use_harris_detector_, 0.04);
+            // OLD VERSION
+            //goodFeaturesToTrack(gray, points[0], this->max_features_, this->quality_level_, this->min_distance_, Mat(), this->block_size_, this->use_harris_detector_, 0.04);
+        }
             
 
         // Initialisation of the gray scales images

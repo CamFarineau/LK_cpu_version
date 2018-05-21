@@ -83,7 +83,7 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
 
     if(features.empty())
     {
-        std::cout<<"No feature to track"<<std::endl;
+        //std::cout<<"No feature to track"<<std::endl;
         return;
     }
 
@@ -162,7 +162,7 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
         {
             Point2f current_point = Point2f(features.at(f).x / pow(2,temp_level),features.at(f).y / pow(2,temp_level));
 
-            //std::cout<<"Feature: "<<current_point<<std::endl;
+            //std::cout<<"Feature "<<f<<": "<<current_point<<std::endl;
             // Define the area corresponding to the window
             float index_col_start = current_point.x - (float)win_size;
             if(index_col_start < 0.0f)
@@ -171,11 +171,11 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             if(index_row_start < 0.0f)
                 index_row_start = 0.0f;
             float index_col_end = current_point.x + (float)win_size;
-            if(index_col_end > (float)this->frame1_pyr_.img_levels.at(temp_level).cols)
-                index_col_end = (float)this->frame1_pyr_.img_levels.at(temp_level).cols;
+            if(index_col_end >= (float)this->frame1_pyr_.img_levels.at(temp_level).cols)
+                index_col_end = (float)this->frame1_pyr_.img_levels.at(temp_level).cols - 1.0f;
             float index_row_end = current_point.y + (float)win_size;
-            if(index_row_end > (float)this->frame1_pyr_.img_levels.at(temp_level).rows)
-                index_row_end = (float)this->frame1_pyr_.img_levels.at(temp_level).rows;
+            if(index_row_end >= (float)this->frame1_pyr_.img_levels.at(temp_level).rows)
+                index_row_end = (float)this->frame1_pyr_.img_levels.at(temp_level).rows - 1.0f;
 
             //std::cout<<"indices: "<<index_col_start<<", "<<index_col_end<<" // "<<index_row_start<<", "<<index_row_end<<std::endl;
 
@@ -183,7 +183,7 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             Point2f derivatives[nb_pix_win];
 
             float g1 = 0.0f, g2 = 0.0f;
-            float gxx = 0.0f, gxy = 0.0f, gyy = 0.0f;
+            float gxx = 0.0f, gxy = 0.0f, gyy = 0.0f, gradx = 0.0f, grady = 0.0f;
 
             for (float i = index_col_start; i <= index_col_end; i += 1.0f)
             {
@@ -194,12 +194,12 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
                     g1 = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i + 1.0f,j));
                     g2 = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i - 1.0f,j));
 
-                    float gradx = (g1 - g2) / 2.0f;
+                    gradx = (g1 - g2) / 2.0f;
 
                     g1 = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j + 1.0f));
                     g2 = get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j - 1.0f));
 
-                    float grady = (g1 - g2) / 2.0f;
+                    grady = (g1 - g2) / 2.0f;
 
                     derivatives[cpt] = Point2f(gradx, grady);
                     cpt++;
@@ -284,13 +284,13 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
             // {
             //     for (float j = index_row_start; j <= index_row_end; j += 1.0f)
             //     {
-            //         float next_index_i = i + pyramid_position.at<float>(0,0) + d_position.at<float>(0, 0);
-            //         float next_index_j = j + pyramid_position.at<float>(0,1) + d_position.at<float>(0, 1);
+            //         float next_index_i = i + pyramid_position.x + d_position.x;
+            //         float next_index_j = j + pyramid_position.y + d_position.y;
 
             //         sum_window += std::abs(get_subpixel_value(this->frame1_pyr_.img_levels.at(temp_level),Point2f(i,j)) - get_subpixel_value(this->frame2_pyr_.img_levels.at(temp_level),Point2f(next_index_i,next_index_j)));
             //     }
             // }
-            // std::cout<<"Residue: "<<sum_window / (float)((win_size*2 + 1)*(win_size*2 + 1))<<std::endl;
+            // //std::cout<<"Residue: "<<sum_window / (float)((win_size*2 + 1)*(win_size*2 + 1))<<std::endl;
             // if(sum_window / (float)((win_size*2 + 1)*(win_size*2 + 1)) > 10.0f)
             // {
             //     status_description = Status::LargeResidue;
@@ -316,9 +316,9 @@ void OptFlowLK::compute_lk(Mat& frame1, Mat& frame2, vector<Point2f>& features, 
         Point2f new_pos = features.at(f) + d_position_final;
 
         //std::cout<<"Pos finale: "<<new_pos<<std::endl;
-        if(status[f] == false || new_pos.x - (float)win_size < 0.0f || new_pos.x + (float)win_size > frame2.cols || new_pos.y - (float)win_size < 0.0f || new_pos.y + (float)win_size >= frame2.rows)
+        if(status[f] == false || new_pos.x < 0.0f || new_pos.x >= frame2.cols || new_pos.y < 0.0f || new_pos.y >= frame2.rows)
         {
-            std::cout<<"feature "<<f<<" erased. Status: "<<status_description<<std::endl;
+            //std::cout<<"feature "<<f<<" erased. Status: "<<status_description<<std::endl;
             new_features.push_back(Point2f(-1.0f,-1.0f));
             status[f] = false;
             continue;
